@@ -40,8 +40,6 @@ jobs:
 
     - name: Make package public
       run: |
-        echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
+        echo "${{ secrets.CR_PAT }}" | gh auth login --with-token
         gh api --method PATCH /user/packages/container/${{ github.event.repository.name }} \
           --field visibility=public
-      env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
