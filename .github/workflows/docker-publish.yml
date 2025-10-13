@@ -41,5 +41,5 @@ jobs:
     - name: Make package public
       run: |
         echo "${{ secrets.CR_PAT }}" | gh auth login --with-token
-        gh api --method PATCH /user/packages/container/${{ github.event.repository.name }} \
+        gh api --method PATCH /orgs/${{ github.repository_owner }}/packages/container/metasensors-image \
           --field visibility=public
