@@ -1,27 +1,60 @@
 library(shiny)
 
-S3_KEY_ID <- readLines("/etc/secrets/access-key", warn = FALSE)[1]
-S3_SECRET_KEY <- readLines("/etc/secrets/secret-key", warn = FALSE)[1]
 S3_ENDPOINT <- "s3.cl4.du.cesnet.cz"
 S3_BUCKET <- "metasensors"
 
+get_secret <- function(name) {
+    path <- stringr::str_glue("/etc/secrets/{name}")
+    if(file.exists(path)) {
+        return(readLines(path, warn = FALSE)[1])
+    }
+    return(NULL)
+}
+
+S3_KEY_ID <- get_secret("access-key")
+S3_SECRET_KEY <- get_secret("secret-key")
+
 db_data <- new.env()
 
-.load_db_data <- function() {
+get_opts <- function() {
+    option_list <- list(
+        optparse::make_option(c("-p", "--port"), type = "integer", default = NULL,
+                              help = "Port number", metavar = "PORT"),
+        optparse::make_option(c("-d", "--db_file"), type = "character", default = NULL,
+                              help = "Database file path", metavar = "FILE"),
+        optparse::make_option(c("-a", "--auth"), type = "logical", default = FALSE,
+                              help = "Enable authentication", action = "store_true"),
+        optparse::make_option(c("--host"), type = "character", default = "127.0.0.1",
+                              help = "Set host", metavar = "HOST")
+    )
+
+    opt_parser <- optparse::OptionParser(option_list = option_list)
+    opts <- optparse::parse_args(opt_parser)
+    return(opts)
+}
+
+opts <- get_opts()
+
+get_db_file <- function(opt_db_file) {
+    if(!is.null(opt_db_file)) {
+        return(opt_db_file)
+    }
     if("date" %in% names(db_data) && (as.Date(db_data$date) == Sys.Date())) {
-        return()
+        return(NULL)
     }
     if("last_check" %in% names(db_data) && (lubridate::now() - db_data$last_check < lubridate::hours(3))) {
-        return()
+        return(NULL)
     }
     files <- aws.s3::get_bucket_df(
         bucket = S3_BUCKET,
         key = S3_KEY_ID,
         secret = S3_SECRET_KEY,
         base_url = S3_ENDPOINT,
-        region = ""
-    )
-    last_file <- max(files$Key)
+        region = "") |>
+        dplyr::filter(stringr::str_ends(.data$Key, ".rds"))
+    last_modified <- max(files$LastModified)
+    files <- dplyr::filter(files, .data$LastModified == last_modified)
+    last_file <- files$Key[[1]]
     aws.s3::save_object(
         object = last_file,
         file = last_file,
@@ -31,17 +64,24 @@ db_data <- new.env()
         base_url = S3_ENDPOINT,
         region = ""
     )
-    remote_data <- readRDS(last_file)
-    file.remove(last_file)
+    return(last_file)
+}
+
+load_db_data <- function(opt_db_file=NULL) {
+    file_path <- get_db_file(opt_db_file)
+    if(is.null(file_path)) {
+        return()
+    }
+    remote_data <- readRDS(file_path)
     purrr::walk(names(remote_data), function(name) {
         db_data[[name]] <- remote_data[[name]]
     })
     db_data$last_check <- lubridate::now()
 }
 
-.load_db_data()
+load_db_data(opts$db_file)
 
-.get_projects_choices <- function() {
+get_projects_choices <- function() {
     names <- db_data$projects$project_name
     result <- as.list(db_data$projects$project_id)
     names(result) <- names
@@ -74,7 +114,7 @@ ui <- fluidPage(
     h2("Select items"),
     fluidRow(
         column(6, selectizeInput("project_select", "Project:", 
-                                 choices = .get_projects_choices(),
+                                 choices = get_projects_choices(),
                                  selected = 5,
                                  width="100%"))
     ),
@@ -104,11 +144,24 @@ ui <- fluidPage(
     ),
 )
 
+if(opts$auth) {
+    ui <- shinymanager::secure_app(ui)
+}
+
 server <- function(input, output, session) {
-    .load_db_data()
+    load_db_data()
     selected_locality_id_val <- reactiveVal(NULL)
     selected_serial_number_val <- reactiveVal(NULL)
     find_search_info_val <- reactiveVal(NULL)
+
+    if(opts$auth) {
+        credentials <- data.frame(
+                user = get_secret("auth-user"),
+                password = get_secret("auth-passwd"),
+                stringsAsFactors = FALSE
+            )
+        res_auth <- shinymanager::secure_server(shinymanager::check_credentials(credentials))
+    }
 
     observeEvent(input$project_select, {
         selected_project_id <- input$project_select
@@ -363,4 +416,4 @@ server <- function(input, output, session) {
 
 # Run the application 
 db_app <- shinyApp(ui = ui, server = server)
-shiny::runApp(db_app)
+shiny::runApp(db_app, port=opts$port, host=opts$host)

@@ -1,0 +1,9 @@
+services:
+  metasensors-app:
+    build: .
+    ports:
+      - "3838:3838"
+    volumes:
+      - ./secrets:/etc/secrets:ro
+    restart: unless-stopped
+    command: "Rscript db_app.R --port 3838 --auth --host 0.0.0.0"
