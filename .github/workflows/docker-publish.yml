@@ -37,3 +37,9 @@ jobs:
         push: true
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
+
+    - name: Make package public
+      run: |
+        echo "${{ secrets.CR_PAT }}" | gh auth login --with-token
+        gh api --method PATCH /user/packages/container/${{ github.event.repository.name }} \
+          --field visibility=public
