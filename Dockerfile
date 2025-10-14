@@ -8,11 +8,12 @@ RUN apt-get update && apt-get install -y \
 
 RUN R -e "install.packages(c('shiny', 'aws.s3', 'DT', 'stringr', 'lubridate', 'purrr', 'optparse', 'dplyr', 'shinymanager'), repos='https://cran.rstudio.com/')"
 
-RUN useradd -ms /bin/bash shiny
+RUN groupadd --gid 1001 group && \
+    useradd --gid 1001 --uid 1001 --no-create-home --shell /bin/bash user
 RUN mkdir -p /usr/local/src/app
-RUN chown -R shiny:shiny /usr/local/src/app
+RUN chown -R user:group /usr/local/src/app
 
 COPY ./app /usr/local/src/app
 WORKDIR /usr/local/src/app
 
-USER shiny
+USER user
