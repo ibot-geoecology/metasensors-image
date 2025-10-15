@@ -67,7 +67,14 @@ get_db_file <- function(opt_db_file) {
     return(last_file)
 }
 
-load_db_data <- function(opt_db_file=NULL) {
+get_db_date_text <- function() {
+    if("date" %in% names(db_data)) {
+        return(stringr::str_glue("DB date: {as.Date(db_data$date)}"))
+    }
+    return("DB date: unknown")
+}
+
+load_db_data <- function(opt_db_file=NULL, db_date_text_val=NULL) {
     file_path <- get_db_file(opt_db_file)
     if(is.null(file_path)) {
         return()
@@ -77,6 +84,9 @@ load_db_data <- function(opt_db_file=NULL) {
         db_data[[name]] <- remote_data[[name]]
     })
     db_data$last_check <- lubridate::now()
+    if(!is.null(db_date_text_val)) {
+        db_date_text_val(get_db_date_text())
+    }
 }
 
 load_db_data(opts$db_file)
@@ -94,7 +104,7 @@ ui <- fluidPage(
         tags$style(HTML("hr {border-top: 1px solid #000000;}"))
     ),
     h1("GeoEko DB"),
-    span(stringr::str_glue("DB date: {as.Date(db_data$date)}")),
+    textOutput("db_date_text"),
     fluidRow(
         column(12, hr())
     ),
@@ -149,7 +159,8 @@ if(opts$auth) {
 }
 
 server <- function(input, output, session) {
-    load_db_data()
+    db_date_text_val <- reactiveVal(get_db_date_text())
+    load_db_data(db_date_text_val=db_date_text_val)
     selected_locality_id_val <- reactiveVal(NULL)
     selected_serial_number_val <- reactiveVal(NULL)
     find_search_info_val <- reactiveVal(NULL)
@@ -238,6 +249,7 @@ server <- function(input, output, session) {
                       options=list(paging=FALSE))
     })
     output$search_info <- renderText(.get_serial_number_info(find_search_info_val()))
+    output$db_date_text <- renderText({return(db_date_text_val())})
 }
 
 .get_locality_choices <- function(project_id) {
