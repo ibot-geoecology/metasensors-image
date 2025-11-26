@@ -25,7 +25,9 @@ get_opts <- function() {
         optparse::make_option(c("-a", "--auth"), type = "logical", default = FALSE,
                               help = "Enable authentication", action = "store_true"),
         optparse::make_option(c("--host"), type = "character", default = "127.0.0.1",
-                              help = "Set host", metavar = "HOST")
+                              help = "Set host", metavar = "HOST"),
+        optparse::make_option(c("-l", "--launch"), type = "logical", default = FALSE,
+                              help = "Launch browser", action = "store_true")
     )
 
     opt_parser <- optparse::OptionParser(option_list = option_list)
@@ -160,7 +162,9 @@ if(opts$auth) {
 
 server <- function(input, output, session) {
     db_date_text_val <- reactiveVal(get_db_date_text())
-    load_db_data(db_date_text_val=db_date_text_val)
+    if(is.null(opts$db_file)) {
+        load_db_data(db_date_text_val=db_date_text_val)
+    }
     selected_locality_id_val <- reactiveVal(NULL)
     selected_serial_number_val <- reactiveVal(NULL)
     find_search_info_val <- reactiveVal(NULL)
@@ -428,4 +432,4 @@ server <- function(input, output, session) {
 
 # Run the application 
 db_app <- shinyApp(ui = ui, server = server)
-shiny::runApp(db_app, port=opts$port, host=opts$host)
+shiny::runApp(db_app, port=opts$port, host=opts$host, launch.browser=opts$launch)
