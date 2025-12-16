@@ -37,6 +37,11 @@ get_opts <- function() {
 
 opts <- get_opts()
 
+www_dir <- file.path(getwd(), "www")
+if (dir.exists(www_dir)) {
+    shiny::addResourcePath("static", www_dir)
+}
+
 get_db_file <- function(opt_db_file) {
     if(!is.null(opt_db_file)) {
         return(opt_db_file)
@@ -103,7 +108,8 @@ get_projects_choices <- function() {
 
 ui <- fluidPage(
     tags$head(
-        tags$style(HTML("hr {border-top: 1px solid #000000;}"))
+        tags$style(HTML("hr {border-top: 1px solid #000000;}")),
+        tags$link(rel="icon", type="image/svg+xml", href="static/icon.svg")
     ),
     h1("GeoEko DB"),
     textOutput("db_date_text"),
