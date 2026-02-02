@@ -163,7 +163,12 @@ ui <- fluidPage(
 )
 
 if(opts$auth) {
-    ui <- shinymanager::secure_app(ui)
+    ui <- shinymanager::secure_app(
+        ui,
+        head_auth = tags$head(
+            tags$link(rel = "icon", type = "image/svg+xml", href = "static/icon.svg")
+        )
+    )
 }
 
 server <- function(input, output, session) {
