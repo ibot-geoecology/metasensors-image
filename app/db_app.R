@@ -1,7 +1,7 @@
 library(shiny)
 
-S3_ENDPOINT <- "s3.cl4.du.cesnet.cz"
-S3_BUCKET <- "metasensors"
+S3_ENDPOINT <- "s3.cloud.e-infra.cz"
+S3_BUCKET <- "vkalcik"
 
 get_secret <- function(name) {
     path <- stringr::str_glue("/etc/secrets/{name}")
