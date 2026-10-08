@@ -1,7 +1,6 @@
-FROM r-base
+FROM rocker/r-ver:4.6
 
-# r-base mixes Debian testing and sid; dev headers must come from sid to match the preinstalled libs
-RUN apt-get update && apt-get install -y -t unstable \
+RUN apt-get update && apt-get install -y \
     libcurl4-openssl-dev \
     libssl-dev \
     libxml2-dev \
@@ -9,7 +8,7 @@ RUN apt-get update && apt-get install -y -t unstable \
     && rm -rf /var/lib/apt/lists/*
 
 RUN R -e "pkgs <- c('shiny', 'aws.s3', 'DT', 'stringr', 'lubridate', 'purrr', 'optparse', 'dplyr', 'shinymanager'); \
-    install.packages(pkgs, repos='https://cran.rstudio.com/'); \
+    install.packages(pkgs); \
     missing <- pkgs[!sapply(pkgs, requireNamespace, quietly=TRUE)]; \
     if (length(missing)) stop('Failed to install: ', paste(missing, collapse=', '))"
 
